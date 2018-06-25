@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'fortdep',
-    version = '170612',
+    version = '180625',
     description = 'generates dependencies between Fortran source files to include in Makefile',
     url = 'https://github.com/gronki/fortdep',
     author = 'Dominik Gronkiewicz',

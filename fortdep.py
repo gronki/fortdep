@@ -3,13 +3,14 @@
 
 from sys import stdout, stderr, argv
 from os import listdir, path, getcwd, walk
-from re import match, compile as re_compile
+from re import match, compile as re_compile, split as re_split
 
 
 re_fort = re_compile(r'(.*)\.[fF](90|95|03|08|)$')
 re_module = re_compile(r'^\s*(module|program|submodule\s*\(\s*([a-zA-Z0-9_]+)\s*\))\s+([a-zA-Z0-9_]+)')
 re_submodule = re_compile(r'submodule\s*\(\s*([a-zA-Z0-9_]+)\s*\)')
 re_use = re_compile(r'^\s*use\s+([a-zA-Z0-9_]+)')
+re_vpathsep = re_compile(r'[:\s]')
 
 modules_standard = set([
     'iso_fortran_env',
@@ -211,10 +212,17 @@ def check_makefile_vpath():
         '--eval=print_vpath:\n\t@echo $(VPATH)',
         'print_vpath',
     ]).replace('\n','')
-    if o != '': return o.split(':')
+    if o != '': return re_split(re_vpathsep, o)
 
 def main():
+    # main program starts here: parse command line args
     args = parse_cmdline_args(argv)
+
+    # set the global verbose flag
+    global verbose
+    verbose = args.verbose
+
+    # if no output file given, write to stdout
     output = stdout if args.output == '--' else open(args.output,'w')
 
     if len(args.path) == 0:
@@ -233,7 +241,6 @@ def main():
                 if path.isfile(path.join(folder,f)) ])      \
                 for arg in args.path for folder in arg.split(':')  ]
 
-    verbose = args.verbose
 
     for reldir, filelist in inp:
         for fn in filelist:

@@ -211,7 +211,7 @@ def check_makefile_vpath():
         'make',
         '--eval=print_vpath:\n\t@echo $(VPATH)',
         'print_vpath',
-    ]).replace('\n','')
+    ]).decode().replace('\n','')
     if o != '': return re_split(re_vpathsep, o)
 
 def main():

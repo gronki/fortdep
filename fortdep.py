@@ -205,8 +205,8 @@ def parse_cmdline_args(argv):
 
     return parser.parse_args(argv[1:])
 
-from subprocess import check_output
 def check_makefile_vpath():
+    from subprocess import check_output
     o = check_output([
         'make',
         '--eval=print_vpath:\n\t@echo $(VPATH)',

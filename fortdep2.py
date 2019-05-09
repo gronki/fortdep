@@ -36,42 +36,33 @@ class Unit(object):
         self.objfile = objfile
         self.name = name.lower()
         self.deps = set()
-    def add_dependency(self, u):
-        self.deps.add(u)
+        self.includes = set()
     def assign_object_file(self, objfile):
+        assert type(objfile) == SourceFile
         if self.objfile: raise Exception(u'Module {} is already assigned'
             ' to {}'.format(self.name, self.objfile))
         self.objfile = objfile
-    def _reprbase(self, s):
-        return u"<{} in {}>".format(s, self.objfile) if self.objfile else u"<{}>".format(s)
     def __repr__(self):
-        return u"unit {}".format(self.name)
+        return  ('program ' if type(self) == Program else '') \
+            + self.name + (' /' + self.objfile.fnsrc + '/' if self.objfile else '')
+    def summ(self):
+        return str(self) \
+            + ('\n  depends on ' + str(self.deps) if len(self.deps) > 0 else '') \
+            + ('\n  includes   ' + str(self.includes) if len(self.includes) > 0 else '') \
+            + ('\n  has submds ' + str(self.submodules) if hasattr(self, 'submodules') and  len(self.submodules) > 0 else '')
 
 #------------------------------------------------------------------------------#
 
 class Program(Unit):
     def __init__(self, name, objfile):
         Unit.__init__(self, name, objfile)
-    def __repr__(self):
-        return self._reprbase(u"program {}".format(self.name))
 
 #------------------------------------------------------------------------------#
 
 class Module(Unit):
     def __init__(self, name, objfile = None):
         Unit.__init__(self, name, objfile)
-    def __repr__(self):
-        return self._reprbase(u"module {}".format(self.name))
-
-#------------------------------------------------------------------------------#
-
-# class Submodule(Module):
-#     def __init__(self, name, module, objfile):
-#         Unit.__init__(self, name, objfile)
-#         self.module = module
-#         self.deps.add(module)
-#     def __repr__(self):
-#         return self._reprbase(u'submodule {s} of {m}'.format(s = self.name, m = self.module.name))
+        self.submodules = set()
 
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
@@ -98,18 +89,6 @@ def query_modules_or_new(name):
 #------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
-loglevel = 0
-
-#------------------------------------------------------------------------------#
-
-def log(s, ll = 0):
-    sr = '' if ll <= 0 else (' + ' if ll == 1 else ' -- ')
-    if ll <= loglevel:
-        for si in s.split('\n'): stderr.write(sr + si + '\n')
-
-#------------------------------------------------------------------------------#
-#------------------------------------------------------------------------------#
-
 # compile regexp
 re_module = re.compile(r'\s*(module|program|submodule\s*\(\s*([a-z0-9_]+)\s*\))\s+([a-z0-9_]+)', re.IGNORECASE)
 re_module_end = re.compile(r'^\s*end\s+(module|submodule|program)', re.IGNORECASE)
@@ -131,21 +110,24 @@ def parse_source(f, objfil):
             # is this a module line? (module, program, etc)
             if mtch:
                 mtype, mparent, mname = mtch.groups()
-                log(u'found {} {}'.format(mtype, mname), 1)
                 if mtype.lower() == 'program':
                     current_module = Program(mname, objfil)
                     universe.add(current_module)
+                    stderr.write(u'+ program {}\n'.format(mname))
                 elif mtype.lower() == 'module':
                     # search for blank modules in the universe before adding
                     current_module = query_modules_or_new(mname)
                     current_module.assign_object_file(objfil)
+                    stderr.write(u'+ module {}\n'.format(mname))
                 elif mparent != None:
                     # for submodules, first search if parent is defined
                     parent_module = query_modules_or_new(mparent)
                     # search for blank modules in the universe before adding
                     current_module = query_modules_or_new(mname)
                     current_module.assign_object_file(objfil)
-                    current_module.add_dependency(parent_module)
+                    current_module.deps.add(parent_module)
+                    parent_module.submodules.add(current_module)
+                    stderr.write(u'+ module {}, submodule of {}\n'.format(mname, mparent))
                 else: raise Exception("wtf")
             # if not, try to match use statement. it could be anonymous program
             # mtch = re.match(re_use, line)
@@ -156,7 +138,7 @@ def parse_source(f, objfil):
             #     universe.add(current_module)
             #     # add the module as dependency
             #     mdep = query_modules_or_new(mtch.group(1))
-            #     current_module.add_dependency(mdep)
+            #     current_module.deps.add(mdep)
         # we are inside the module
         else:
             # two things can happen: "use" statement, include or unit end
@@ -172,14 +154,15 @@ def parse_source(f, objfil):
             if mtch:
                 # use statement matched; add as dependency
                 mdep = query_modules_or_new(mtch.group(1))
-                log('{} uses {}'.format(current_module, mdep), 2)
-                current_module.add_dependency(mdep)
+                current_module.deps.add(mdep)
+                stderr.write('* {} uses {}\n'.format(current_module, mdep))
                 continue
 
             # attempt to match "include"
             mtch = re.match(re_include, line)
             if mtch:
-                log('{} includes {}'.format(current_module, mtch.group(1)), 2)
+                current_module.includes.add(mtch.group(1))
+                stderr.write('* {} includes {}\n'.format(current_module, mtch.group(1)))
                 continue
 
 #------------------------------------------------------------------------------#
@@ -190,8 +173,10 @@ def parse_cmdline_args():
     from argparse import ArgumentParser
 
     parser = ArgumentParser('fortdep')
-    parser.add_argument('--verbose', '-v', action = 'store_true',
-            help = 'be verbose')
+    parser.add_argument('--programs', '-p', action = 'store_true',
+            help = 'generate rules to link programs')
+    parser.add_argument('--no-includes', '-i', action = 'store_true',
+            help = 'don\'t generate dependencies from includes')
     parser.add_argument('--output', '-o',
             type = str, default = '--',
             help = 'write output to file')
@@ -214,15 +199,12 @@ def check_makefile_vpath():
 #------------------------------------------------------------------------------#
 
 def main():
-    global universe, objfiles, loglevel
+    global universe, objfiles
 
     #--------------------------------------------------------------------------#
 
     # main program starts here: parse command line args
     args = parse_cmdline_args()
-
-    # set the global verbose flag
-    loglevel = 2 if args.verbose else 0
 
     # if no output file given, write to stdout
     output = stdout if args.output == '--' else open(args.output, 'w')
@@ -233,12 +215,12 @@ def main():
     if len(args.path) == 0:
         make_vpath = check_makefile_vpath()
         if make_vpath:
-            log('found Makefile, using directories: {}'.format(", ".join(make_vpath)))
+            stderr.write('found Makefile, using directories: {}\n'.format(", ".join(make_vpath)))
             inp = [ (folder, [ f for f in listdir(folder)       \
                     if path.isfile(path.join(folder,f)) ])      \
                     for folder in make_vpath ]
         else:
-            log(u'no directories given; scanning recursively...')
+            stderr.write(u'no directories given; scanning recursively...\n')
             cwd = getcwd()
             inp = [ (path.relpath(fd,cwd),fl) for fd,lf,fl in walk(cwd) ]
     else:
@@ -263,22 +245,33 @@ def main():
 
     #--------------------------------------------------------------------------#
 
-    nonblank = lambda S: filter(lambda x: x.objfile != None, S)
-
     # model is complete, now we can generate the products
-    for u in nonblank(universe):
-        deps_fixed = set(map(lambda x: x.objfile, nonblank(u.deps))) - set([u.objfile])
+    for u in universe:
+        if u.objfile == None:
+            stderr.write('warning: module {} was not found in any file\n'.format(u))
+            continue
+        deps_fixed = set(x.objfile.fnobj for x in u.deps if x.objfile != None)
+        if not args.no_includes:
+            deps_fixed |= u.includes
+        deps_fixed -= set((u.objfile.fnobj,))
         if len(deps_fixed) == 0: continue
-        output.write('{}: {}\n'.format(u.objfile, ' '.join([str(d) for d in deps_fixed])))
+        output.write('{}: {}\n'.format(u.objfile.fnobj, ' '.join(deps_fixed)))
 
     #--------------------------------------------------------------------------#
 
-    output.write('\n')
+    if args.programs:
 
-    for u in filter(lambda x: type(x) == Program, nonblank(universe)):
-        deps = set(nonblank(u.deps)) | set([ u ])
-        output.write('{}: {}\n'.format(u.objfile.fnexe, ' '.join([str(d.objfile) for d in deps])))
-        output.write('\t$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@\n\n')
+        output.write('\n#' + 59 * '-' + '\n\n')
+
+        for u in filter(lambda x: type(x) == Program and x.objfile != None, universe):
+            deps = set(x for x in u.deps if x.objfile != None) | set((u,))
+            output.write('{}: {}\n'.format(u.objfile.fnexe, ' '.join([str(d.objfile) for d in deps])))
+            output.write('\t$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@\n\n')
+
+    stderr.write('\n-------------- MODULE SUMMARY --------------\n')
+    for u in universe:
+        stderr.write(u.summ() + '\n')
+    stderr.write('----------- END OF MODULE SUMMARY ----------\n\n')
 
 #------------------------------------------------------------------------------#
 

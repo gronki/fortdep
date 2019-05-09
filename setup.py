@@ -1,8 +1,12 @@
-from setuptools import setup, find_packages
+# -*- coding: utf-8 -*-
 
+import sys
+assert sys.version_info[0] >= 3
+
+from setuptools import setup
 setup(
     name = 'fortdep',
-    version = '190501',
+    version = '190502',
     description = 'generates dependencies between Fortran source files to include in Makefile',
     url = 'https://github.com/gronki/fortdep',
     author = 'Dominik Gronkiewicz',

@@ -281,8 +281,7 @@ def main():
     for tgt,dep in broken_deps:
         modules_uses[tgt].remove(dep)
 
-    deps_sort = modules_uses.items()
-    deps_sort.sort(cmp = lambda hi,lo: 1 if hi[0] > lo[0] else ( -1 if hi[0] < lo[0] else 0 ))
+    deps_sort = sorted(modules_uses.items(), key = lambda x: x[0])
     dependencies = [ Dependency([tgt], deps) for tgt,deps in deps_sort if len(deps) > 0 ]
 
     if args.optimize > 0:

@@ -17,7 +17,7 @@ python3 setup.py install --user
 ## Usage
 
 ```
-usage: fortdep [-h] [--programs] [--no-includes] [--verbose] [--output OUTPUT]
+usage: fortdep2 [-h] [--programs] [--no-includes] [--verbose] [--output OUTPUT]
                [path [path ...]]
 
 positional arguments:

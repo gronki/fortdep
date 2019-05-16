@@ -176,7 +176,7 @@ def parse_cmdline_args():
     from sys import argv
     from argparse import ArgumentParser
 
-    parser = ArgumentParser('fortdep')
+    parser = ArgumentParser('fortdep2')
     parser.add_argument('--programs', '-p', action = 'store_true',
             help = 'generate rules to link programs')
     parser.add_argument('--no-includes', '-i', action = 'store_true',

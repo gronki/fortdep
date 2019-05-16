@@ -98,6 +98,10 @@ re_include = re.compile(r'^\s*include\s+["\'](.+)["\']', re.IGNORECASE)
 
 #------------------------------------------------------------------------------#
 
+verbose = False
+
+#------------------------------------------------------------------------------#
+
 def parse_source(f, objfil):
     global universe
     # when module name is found, it will be set here
@@ -113,12 +117,12 @@ def parse_source(f, objfil):
                 if mtype.lower() == 'program':
                     current_module = Program(mname, objfil)
                     universe.add(current_module)
-                    stderr.write(u'+ program {}\n'.format(mname))
+                    if verbose: stderr.write(u'+ program {}\n'.format(mname))
                 elif mtype.lower() == 'module':
                     # search for blank modules in the universe before adding
                     current_module = query_modules_or_new(mname)
                     current_module.assign_object_file(objfil)
-                    stderr.write(u'+ module {}\n'.format(mname))
+                    if verbose: stderr.write(u'+ module {}\n'.format(mname))
                 elif mparent != None:
                     # for submodules, first search if parent is defined
                     parent_module = query_modules_or_new(mparent)
@@ -127,7 +131,7 @@ def parse_source(f, objfil):
                     current_module.assign_object_file(objfil)
                     current_module.deps.add(parent_module)
                     parent_module.submodules.add(current_module)
-                    stderr.write(u'+ module {}, submodule of {}\n'.format(mname, mparent))
+                    if verbose: stderr.write(u'+ module {}, submodule of {}\n'.format(mname, mparent))
                 else: raise Exception("wtf")
             # if not, try to match use statement. it could be anonymous program
             # mtch = re.match(re_use, line)
@@ -155,14 +159,14 @@ def parse_source(f, objfil):
                 # use statement matched; add as dependency
                 mdep = query_modules_or_new(mtch.group(1))
                 current_module.deps.add(mdep)
-                stderr.write('* {} uses {}\n'.format(current_module, mdep))
+                if verbose: stderr.write('* {} uses {}\n'.format(current_module, mdep))
                 continue
 
             # attempt to match "include"
             mtch = re.match(re_include, line)
             if mtch:
                 current_module.includes.add(mtch.group(1))
-                stderr.write('* {} includes {}\n'.format(current_module, mtch.group(1)))
+                if verbose: stderr.write('* {} includes {}\n'.format(current_module, mtch.group(1)))
                 continue
 
 #------------------------------------------------------------------------------#
@@ -177,6 +181,8 @@ def parse_cmdline_args():
             help = 'generate rules to link programs')
     parser.add_argument('--no-includes', '-i', action = 'store_true',
             help = 'don\'t generate dependencies from includes')
+    parser.add_argument('--verbose', '-v', action = 'store_true',
+            help = 'more info')
     parser.add_argument('--output', '-o',
             type = str, default = '--',
             help = 'write output to file')
@@ -199,7 +205,7 @@ def check_makefile_vpath():
 #------------------------------------------------------------------------------#
 
 def main():
-    global universe, objfiles
+    global universe, objfiles, verbose
 
     #--------------------------------------------------------------------------#
 
@@ -208,6 +214,8 @@ def main():
 
     # if no output file given, write to stdout
     output = stdout if args.output == '--' else open(args.output, 'w')
+
+    verbose = args.verbose
 
     #--------------------------------------------------------------------------#
 
@@ -268,10 +276,11 @@ def main():
             output.write('{}: {}\n'.format(u.objfile.fnexe, ' '.join([str(d.objfile) for d in deps])))
             output.write('\t$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@\n\n')
 
-    stderr.write('\n-------------- MODULE SUMMARY --------------\n')
-    for u in universe:
-        stderr.write(u.summ() + '\n')
-    stderr.write('----------- END OF MODULE SUMMARY ----------\n\n')
+    if verbose:
+        stderr.write('\n-------------- MODULE SUMMARY --------------\n')
+        for u in universe:
+            stderr.write(u.summ() + '\n')
+        stderr.write('----------- END OF MODULE SUMMARY ----------\n\n')
 
 #------------------------------------------------------------------------------#
 

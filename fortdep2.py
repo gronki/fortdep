@@ -87,6 +87,18 @@ def query_modules_or_new(name):
     return m
 
 #------------------------------------------------------------------------------#
+
+def walktree(u, bag = set()):
+    deps = set(filter(lambda x: x.objfile != None, u.deps))
+    if hasattr(u, 'submodules'):
+        deps |= set(filter(lambda x: x.objfile != None, u.submodules))
+    for d in deps:
+        if not d in bag:
+            bag.add(d)
+            bag |= walktree(d, bag)
+    return bag
+
+#------------------------------------------------------------------------------#
 #------------------------------------------------------------------------------#
 
 # compile regexp
@@ -269,11 +281,12 @@ def main():
 
     if args.programs:
 
-        output.write('\n#' + 59 * '-' + '\n\n')
+        output.write('\n')
 
-        for u in filter(lambda x: type(x) == Program and x.objfile != None, universe):
-            deps = set(x for x in u.deps if x.objfile != None) | set((u,))
-            output.write('{}: {}\n'.format(u.objfile.fnexe, ' '.join([str(d.objfile) for d in deps])))
+        for p in filter(lambda x: type(x) == Program and x.objfile != None, universe):
+            d = set(x.objfile.fnobj for x in walktree(p) if x.objfile != None)
+            d |= set((p.objfile.fnsrc,))
+            output.write('{}: {}\n'.format(p.objfile.fnexe, ' '.join(d)))
             output.write('\t$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $< $(LDLIBS) -o $@\n\n')
 
     if verbose:

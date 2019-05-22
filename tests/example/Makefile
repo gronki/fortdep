@@ -7,21 +7,21 @@ programs = prog1 prog2
 
 all: $(programs)
 
-prog1.o: m3.o m1.o
-prog2.o: m3.o m2.o
-m11.o: m1.o
-m1.o: m3.o m2.o
+m11.o: m3.o m1.o
+m1.o: m2.o
+m3.o: i2.f90 i1.f90
 m2.o: i1.f90 m3.o
-m3.o: i1.f90 i2.f90
+prog1.o: m3.o m1.o
+prog2.o: m2.o m3.o
 
 %.o: %.f90
 	$(FC) $(INCLUDE) $(FFLAGS) -c $< -o $@
 %.o: %.F90
 	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) -c $< -o $@
 
-prog1: m2.o m1.o m11.o prog1.o m3.o
+prog1: prog1.o m2.o m11.o m1.o m3.o
 	$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-prog2: prog2.o m3.o m2.o
+prog2: prog2.o m2.o m3.o
 	$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 install:

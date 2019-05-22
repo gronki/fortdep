@@ -1,4 +1,5 @@
 submodule (m1) m11
+  use m3
   implicit none
 contains
   subroutine proc1

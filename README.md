@@ -2,6 +2,12 @@
 
 Tool to generate dependencies for Modern Fortran programs.
 
+### Version 1 and 2
+
+Package comes with two scripts: ``fortdep`` which is the original version, kept
+for compatibility, and ``fortdep2`` which is currently developed version.
+Expect that in the future the latter will be renamed to ``fortdep``.
+
 ## Installation
 
 In virtual environment:

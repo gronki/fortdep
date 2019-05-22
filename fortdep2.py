@@ -89,12 +89,12 @@ def query_modules_or_new(name):
 #------------------------------------------------------------------------------#
 
 def walktree(u, bag = set()):
+    bag.add(u)
     deps = set(filter(lambda x: x.objfile != None, u.deps))
     if hasattr(u, 'submodules'):
         deps |= set(filter(lambda x: x.objfile != None, u.submodules))
     for d in deps:
         if not d in bag:
-            bag.add(d)
             bag |= walktree(d, bag)
     return bag
 
@@ -303,7 +303,6 @@ def main():
 
         for p in allprograms:
             d = set(x.objfile.fnobj for x in walktree(p) if x.objfile != None)
-            d.add(p.objfile.fnobj)
             output.write('{}: {}\n'.format(p.objfile.fnexe, ' '.join(d)))
             output.write('\t$(FC) $(INCLUDE) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@\n')
 

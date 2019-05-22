@@ -6,7 +6,7 @@ assert sys.version_info[0] >= 3
 from setuptools import setup
 setup(
     name = 'fortdep',
-    version = '190502',
+    version = '190520',
     description = 'generates dependencies between Fortran source files to include in Makefile',
     url = 'https://github.com/gronki/fortdep',
     author = 'Dominik Gronkiewicz',

@@ -201,6 +201,8 @@ def parse_cmdline_args():
             help = 'generate entire makefile')
     parser.add_argument('--verbose', '-v', action = 'store_true',
             help = 'more info')
+    parser.add_argument('--encoding', '-e', type = str, default = 'utf-8',
+            dest = 'encoding', help = 'specify input encoding (default: utf-8)')
     parser.add_argument('--output', '-o',
             type = str, default = '--',
             help = 'write output to file')
@@ -264,7 +266,7 @@ def main():
             # relative directory + filename
             filepath = path.join(reldir,fn)
 
-            with open(filepath,'r') as f:
+            with open(filepath, 'r', encoding = args.encoding) as f:
                 obj = SourceFile(fn)
                 objfiles.add(obj)
                 parse_source(f, obj)

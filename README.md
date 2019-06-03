@@ -24,7 +24,7 @@ python3 setup.py install --user
 
 ```
 usage: fortdep2 [-h] [--programs] [--no-includes] [--scaffold] [--verbose]
-                [--output OUTPUT]
+                [--encoding ENCODING] [--output OUTPUT]
                 [path [path ...]]
 
 positional arguments:
@@ -36,6 +36,43 @@ optional arguments:
   --no-includes, -i     don't generate dependencies from includes
   --scaffold, -s        generate entire makefile
   --verbose, -v         more info
+  --encoding ENCODING, -e ENCODING
+                        specify input encoding (default: utf-8)
   --output OUTPUT, -o OUTPUT
                         write output to file
+```
+
+### Example 0
+
+Just display the dependencies on screen:
+```bash
+fortdep2
+```
+
+### Example 1
+
+Typical use is to generate dependencies and write them in a file
+```bash
+fortdep2 -o deps.inc
+```
+
+which is then included in Makefile:
+```makefile
+include deps.inc
+```
+
+### Example 2
+
+Generate whole Makefile (it is assumed that all Fortran sources have .f90 extension):
+```bash
+fortdep2 -s -o Makefile
+```
+
+## Problems and bugs
+
+### Encoding
+
+Most contemporary Linux systems use utf-8 encoding. If you run across the error similar to below, please use ``-e`` option to specify input encoding.
+```
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xbf in position 16: invalid start byte
 ```

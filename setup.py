@@ -8,7 +8,7 @@ if sys.version_info[0] < 3:
 from setuptools import setup
 setup(
     name = 'fortdep',
-    version = '190603',
+    version = '191214',
     description = 'generates dependencies between Fortran source files to include in Makefile',
     url = 'https://github.com/gronki/fortdep',
     author = 'Dominik Gronkiewicz',
